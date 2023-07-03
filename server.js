@@ -121,8 +121,8 @@ try{
           fillCache()
           return;
       }
-      const latestBlock = provider.getBlock()      
-      const latestBlockNumber = latestBlock.number.toString();
+      const latestBlock = await provider.getBlock()      
+      const latestBlockNumber = latestBlock.number;
       await redis.set("latestBlock",latestBlockNumber);
       await  redis.hSet(`${latestBlock.number}`,{
         baseGas: `${ethers.utils.formatUnits(latestBlock.baseFeePerGas.toString(),"gwei")}`,
