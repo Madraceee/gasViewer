@@ -4,7 +4,6 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 
 First, 
 Ensure Redis is running. Change the URL, PORT for Redis
-Add the Frontend URL and PORT
 
 Second, run the development server:
 

@@ -58,18 +58,18 @@ export default function Home() {
         let currentTime = new Date();
         switch(newValue){
           case "15Min":
-            time = new Date(currentTime.getTime() - 15 * 60);
-            unixTime = Math.floor(time.getTime() / 1000);
+            time = new Date(currentTime.getTime() - 15 * 60 * 1000);
+            unixTime = Math.floor(time.getTime() /1000);
             getBlocksOnTimeStamp(unixTime);
             break;
           case "1Hr":
-            time = new Date(currentTime.getTime() -  60 * 60);
-            unixTime = Math.floor(time.getTime() / 1000);
+            time = new Date(currentTime.getTime() -  60 * 60 * 1000);
+            unixTime = Math.floor(time.getTime() /1000);
             getBlocksOnTimeStamp(unixTime);
             break;
           case "1Day":
-            time = new Date(currentTime.getTime() - 24*60 * 60);
-            unixTime = Math.floor(time.getTime() / 1000);
+            time = new Date(currentTime.getTime() - 24*60 * 60 * 1000);
+            unixTime = Math.floor(time.getTime() /1000);
             getBlocksOnTimeStamp(unixTime);
             break;
         }

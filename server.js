@@ -30,17 +30,11 @@ function addMissedValues(redis,oldNumber,newNumber){
   Promise.all(blockPromises)
     .then(async (blocks)=>{
       for(let i in blocks){
-        redis.exists(`value:${blocks[i].number}`,async (err,reply)=>{
-          if(err) {throw err}
-          if(reply !== 1){
-            await  redis.hSet(`value:${blocks[i].number}`,{
-              baseGas: `${ethers.utils.formatUnits(blocks[i].baseFeePerGas.toString(),"gwei")}`,
-              timestamp: `${blocks[i].timestamp}`
-            }); 
-          }
-        })        
-      }
-      
+        await  redis.hSet(`value:${blocks[i].number}`,{
+          baseGas: `${ethers.utils.formatUnits(blocks[i].baseFeePerGas.toString(),"gwei")}`,
+          timestamp: `${blocks[i].timestamp}`
+        });       
+      }      
     })
     .then(()=>{console.log("Missing Blocks Added")})
     .catch(err=>{
