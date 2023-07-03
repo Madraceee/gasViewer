@@ -37,6 +37,15 @@ p{
     font-weight: 600;
 }
 
+.error-ctn{
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    justify-content: center;
+    align-items: center;
+    
+}
+
 
 select{
     width: 100px;

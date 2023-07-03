@@ -100,8 +100,17 @@ export default function Home() {
       socket.emit("end");
       socket.disconnect();
     };
-    if(socket.connected)
-      console.log("Socket.io Connected");
+    
+    socket.on("connect",()=>{
+      setIsError(false);
+      console.log("Socket Connected");
+    })
+
+    socket.on("disconnect",(err)=>{
+      setIsError(true);
+      console.error("Socket disconnected",err);
+      socket.disconnect();
+    })
 
     socket.on("newBlock",(latestBlock)=>{
       setIsError(false);
@@ -138,8 +147,9 @@ export default function Home() {
       </header>
       {loading ? <Loading /> : isError? 
         (
-          <div style={{display: "flex",alignContent: "center",justifyContent: "center"}}>
-            <img src="/danger.png" alt="Danger" width={"100px"} />
+          <div className="error-ctn">
+            <img src="/danger.png" alt="Danger" width={"70px"} />
+            <span>Server Error</span>
           </div>
         ):
         (
