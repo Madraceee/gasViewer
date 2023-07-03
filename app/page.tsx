@@ -4,7 +4,7 @@ import axios from "axios";
 import { io } from "socket.io-client";
 
 import "./page.css";
-import ScatterChart from "./scatterChart";
+import LineChart from "./lineChart";
 import Loading from "./loading";
 
 export interface BlockBaseGasProps{
@@ -20,30 +20,45 @@ export default function Home() {
   const [latestBaseGas,setLatestBaseGas] = useState<string>();
   const [option,setOption] = useState<string>("Default");
   const [loading,setLoading] = useState<boolean>(true);
+  const [isError,setIsError] = useState<boolean>(false);
 
   async function getDefaultGases(){
+    setIsError(false)
     setLoading(true);
     setIdBaseGas([]);
-    const response = await axios.get(`http://localhost:3001/api/blocks-default`)
-    const data: BlockBaseGasProps[] = response.data.data;
-    setLatestBaseGas(data[data.length-1].baseGas.substring(0,data[data.length-1].baseGas.indexOf('.')))
-    setIdBaseGas(data);
-   
-    setLoading(false);
+    try{
+      const response = await axios.get(`http://localhost:3001/api/blocks-default`)
+      const data: BlockBaseGasProps[] = response.data.data;
+      setLatestBaseGas(data[data.length-1].baseGas.substring(0,data[data.length-1].baseGas.indexOf('.')))
+      setIdBaseGas(data);
+     
+      setLoading(false);
+    }
+    catch(err){
+      console.error(err);
+      setLoading(false);
+      setIsError(true);
+    }
   }
 
   async function getBlocksOnTimeStamp(oldTimeStamp: number){
+    setIsError(false)
     setLoading(true);
     setIdBaseGas([]);
-    const response = await axios.get(`http://localhost:3001/api/blocks-timestamp/${oldTimeStamp}`)
-    const data: BlockBaseGasProps[] = response.data.data;
-    console.log(data);
-    //if(data[data.length-1].baseGas)
-    setLatestBaseGas(data[data.length-1].baseGas.substring(0,data[data.length-1].baseGas.indexOf('.')))
-    setIdBaseGas(data);
-   
-    setLoading(false);
-    //getLatestBaseGas();
+    try{
+      const response = await axios.get(`http://localhost:3001/api/blocks-timestamp/${oldTimeStamp}`)
+      const data: BlockBaseGasProps[] = response.data.data;
+      setLatestBaseGas(data[data.length-1].baseGas.substring(0,data[data.length-1].baseGas.indexOf('.')))
+      setIdBaseGas(data);
+     
+      setLoading(false);
+    }
+    catch(err){
+      console.error(err);
+      setLoading(false);
+      setIsError(true)
+    }
+    
   }
 
   function handleOptionChange(newValue:string){
@@ -79,6 +94,7 @@ export default function Home() {
 
 
   function getLatestBaseGas(){
+    setIsError(false);
     const socket = io('ws://localhost:3001');
     window.onbeforeunload = function(e) {
       socket.emit("end");
@@ -86,7 +102,9 @@ export default function Home() {
     };
     if(socket.connected)
       console.log("Socket.io Connected");
+
     socket.on("newBlock",(latestBlock)=>{
+      setIsError(false);
       const data = JSON.parse(latestBlock)
       setLatestBaseGas(data.baseGas.substring(0,data.baseGas.indexOf('.')))
       setIdBaseGas((arr)=>arr.slice(1));
@@ -109,28 +127,37 @@ export default function Home() {
   return (
    <div>
     <div className="component">
-      {loading ? <Loading /> : (
+      <header>
+        <span>Network Fee</span>            
+        <select name="duration" id="option" onChange={(e)=>handleOptionChange(e.target.value)} value={option}>
+          <option>Default</option>
+          <option>15Min</option>
+          <option>1Hr</option>
+          <option>1Day</option>
+        </select>
+      </header>
+      {loading ? <Loading /> : isError? 
+        (
+          <div style={{display: "flex",alignContent: "center",justifyContent: "center"}}>
+            <img src="/danger.png" alt="Danger" width={"100px"} />
+          </div>
+        ):
+        (
         <>
-          <header>
-            <span>Network Fee</span>            
-            <select name="duration" id="option" onChange={(e)=>handleOptionChange(e.target.value)} value={option}>
-              <option>Default</option>
-              <option>15Min</option>
-              <option>1Hr</option>
-              <option>1Day</option>
-            </select>
-          </header>
           <div>
             <p><span className="gasFee">{latestBaseGas}</span> <span>gwei</span></p>
             <p className="baseFeeText">Current Base Fee</p>
           </div>
           <div>
-            <ScatterChart 
+            <LineChart 
               points = {idBaseGas}
             />
           </div>
-        </>        
-      )}   
+        </>
+        )        
+      }
+
+      
      </div>       
    </div>
   )

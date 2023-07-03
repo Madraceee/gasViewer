@@ -9,11 +9,12 @@ const eventEmitter = new EventEmitter();
 
 //Redis Details
 const REDIS_URL = "localhost";
-const REDIS_PORT = process.env.REDIS_PORT;
+const REDIS_PORT = 8001;
 
 // Backend Details
 const BACKEND_HOSTNAME = "localhost";
 const BACKEND_PORT = 3001;
+const EXPIRATION = 24 * 60 * 60;
 
 
 // Ethereum Provider
@@ -30,10 +31,11 @@ function addMissedValues(redis,oldNumber,newNumber){
   Promise.all(blockPromises)
     .then(async (blocks)=>{
       for(let i in blocks){
-        await  redis.hSet(`value:${blocks[i].number}`,{
+        await  redis.hSet(`${blocks[i].number}`,{
           baseGas: `${ethers.utils.formatUnits(blocks[i].baseFeePerGas.toString(),"gwei")}`,
           timestamp: `${blocks[i].timestamp}`
-        });       
+        });  
+        await redis.expire(`${blocks[i].number}`,EXPIRATION);  
       }      
     })
     .then(()=>{console.log("Missing Blocks Added")})
@@ -78,26 +80,61 @@ redis.on('error', (err) => {
 });
 
 
+async function fillCache(){
+  console.time("Key1");
+  console.log("Cache Filling Started");  
+
+  try{
+    const latestBlock = await provider.getBlock();
+    const latestBlockNumber = latestBlock.number;
+    const blockPromises = [];
+
+    await redis.set("latestBlock",latestBlock.number);
+
+    for(let i = 0;i<1000;i++){
+      blockPromises.push(provider.getBlock(latestBlockNumber-i))
+    }
+    const blocks = await Promise.all(blockPromises)
+  
+    for(const block of blocks){
+      await  redis.hSet(`${block.number}`,{
+        baseGas: `${ethers.utils.formatUnits(block.baseFeePerGas.toString(),"gwei")}`,
+        timestamp: `${block.timestamp}`
+      }); 
+      await redis.expire(`${block.number}`,EXPIRATION);
+    }
+    console.log("Filled cache with 100 Data");
+  }
+  catch(err){
+    console.log("Error while filling Cache",err);
+  }
+   
+  console.timeEnd("Key1");
+}
+
+
 //Get latest Block and store it  
 try{
   redis.get("latestBlock")
-    .then((oldLatestBlockNumber)=>{
-      let latestBlockNumber;
-      provider.getBlock()
-        .then(async (latestBlock)=>{
-          latestBlockNumber = latestBlock.number.toString();
-          await redis.set("latestBlock",latestBlockNumber);
-          await  redis.hSet(`value:${latestBlock.number}`,{
-            baseGas: `${ethers.utils.formatUnits(latestBlock.baseFeePerGas.toString(),"gwei")}`,
-            timestamp: `${latestBlock.timestamp}`
-          }); 
+    .then(async (oldLatestBlockNumber)=>{
+      if(oldLatestBlockNumber === null){
+          fillCache()
+          return;
+      }
+      const latestBlock = provider.getBlock()      
+      const latestBlockNumber = latestBlock.number.toString();
+      await redis.set("latestBlock",latestBlockNumber);
+      await  redis.hSet(`${latestBlock.number}`,{
+        baseGas: `${ethers.utils.formatUnits(latestBlock.baseFeePerGas.toString(),"gwei")}`,
+        timestamp: `${latestBlock.timestamp}`
+      }); 
+      await redis.expire(`${latestBlock.number}`,EXPIRATION);
 
-          if(latestBlockNumber !== oldLatestBlockNumber){
-            oldNumber = Number(oldLatestBlockNumber);
-            newNumber = Number(latestBlockNumber);
-            addMissedValues(redis,oldNumber,newNumber);
-          }
-        });             
+      if(latestBlockNumber !== oldLatestBlockNumber){
+        oldNumber = Number(oldLatestBlockNumber);
+        newNumber = Number(latestBlockNumber);
+        addMissedValues(redis,oldNumber,newNumber);
+      }             
     });  
 }
 catch(err){
@@ -113,12 +150,13 @@ provider.on("block",async (id)=>{
       let latestBlockNumber = await redis.get("latestBlock");
       if(latestBlock.number.toString() !== latestBlockNumber){
         await redis.set("latestBlock",latestBlock.number.toString());
-        await  redis.hSet(`value:${latestBlock.number}`,{
+        await  redis.hSet(`${latestBlock.number}`,{
           baseGas: `${ethers.utils.formatUnits(latestBlock.baseFeePerGas.toString(),"gwei")}`,
           timestamp: `${latestBlock.timestamp}`
         });
-        eventEmitter.emit("newBlock",latestBlock);
+        await redis.expire(`${latestBlock.number}`,EXPIRATION);
         
+        eventEmitter.emit("newBlock",latestBlock);        
       }
     })    
 })
@@ -146,7 +184,7 @@ io.on("connection",(socket)=>{
 
 async function getBlocksOnTimestamp(oldTimeStamp){
   let latestBlockNumber = await redis.get("latestBlock");
-  let latestBlock = await redis.hGetAll(`value:${latestBlockNumber}`);
+  let latestBlock = await redis.hGetAll(`${latestBlockNumber}`);
 
   const blocks = [];
   let i = latestBlockNumber;
@@ -154,13 +192,15 @@ async function getBlocksOnTimestamp(oldTimeStamp){
   
   while(timestamp >= oldTimeStamp){  
     i = i-1;
-    let block = await redis.hGetAll(`value:${i}`);  
+    let block = await redis.hGetAll(`${i}`);  
     if(block.timestamp === undefined || block.baseGas === undefined){
       let newBlock = await provider.getBlock(i);
-      await  redis.hSet(`value:${newBlock.number}`,{
+      await  redis.hSet(`${newBlock.number}`,{
         baseGas: `${ethers.utils.formatUnits(newBlock.baseFeePerGas.toString(),"gwei")}`,
         timestamp: `${newBlock.timestamp}`
       });
+      await redis.expire(`${newBlock.number}`,EXPIRATION);
+
       block = {
         id: i, 
         baseGas: `${ethers.utils.formatUnits(newBlock.baseFeePerGas.toString(),"gwei")}`,
@@ -195,7 +235,7 @@ app.get("/api/blocks-default",async(req,res)=>{
   let latestBlockNumber = await redis.get("latestBlock");
   const arr = [];
   for(let i=latestBlockNumber-24; i<=latestBlockNumber;i++){
-    const val = await redis.hGetAll(`value:${i}`);
+    const val = await redis.hGetAll(`${i}`);
     if(val.baseGas && val.timestamp){
       const obj = {
         id: i, 
@@ -206,10 +246,11 @@ app.get("/api/blocks-default",async(req,res)=>{
     }
     else{
       const block = await provider.getBlock(i);
-      await  redis.hSet(`value:${block.number}`,{
+      await  redis.hSet(`${block.number}`,{
         baseGas: `${ethers.utils.formatUnits(block.baseFeePerGas.toString(),"gwei")}`,
         timestamp: `${block.timestamp}`
       });
+      await redis.expire(`${block.number}`,EXPIRATION);
       const obj = {
         id: i, 
         baseGas: `${ethers.utils.formatUnits(block.baseFeePerGas.toString(),"gwei")}`,

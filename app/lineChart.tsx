@@ -31,29 +31,27 @@ ChartJS.register(
   Legend
 );
 
-export default function ScatterChart({points}:ScatterChartProps) {
+export default function LineChart({points}:ScatterChartProps) {
   // Extract x and y values from the data array
   const chartData = {
-    labels: points.map((point) => point.id),
+    labels: points.map((point) => `Block No : ${point.id}`),
     datasets: [      
       {        
-        label:"Base Gas",
         fill: true,
+        label: "gwei",
         data: points.map((point) => {if(point.baseGas) return Number(point.baseGas.substring(0,point.baseGas.indexOf('.'))) }),
-        borderColor: 'rgba(75,192,192,0.4)',
-        backgroundColor: 'rgba(75,192,192,0.4)',
-        pointRadius: 3
+        borderColor: 'rgb(101, 71, 192,0.8)',
+        backgroundColor: 'rgb(101, 71, 192,0.4)',
+        pointRadius: 2
       },
     ],
   };
 
-  const chartOptions: ChartOptions<ChartType> = {
+  const chartOptions: ChartOptions<"line"> = {
     scales: {
       x: {
         ticks: {
-          callback: (value: number, index: number, values: number[]) => {
-              return '';
-          },
+          display: false
         }
       },
       y:{
@@ -62,17 +60,16 @@ export default function ScatterChart({points}:ScatterChartProps) {
     },
     plugins: {
       legend: {
-        position: 'top' as const,
+        display: false
       },
     },
     responsive: true,
-    maintainAspectRatio: false,
-    aspectRatio: 20
+    maintainAspectRatio: true,
   };
 
   return (
-    <div>
-      <Line data={chartData} options={chartOptions} />
+    <div style={{width: "1000px",marginTop: "30px"}}>
+      <Line data={chartData}  options={chartOptions} />
     </div>
   );
 }
