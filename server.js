@@ -40,7 +40,7 @@ function addMissedValues(redis,oldNumber,newNumber){
     })
     .then(()=>{console.log("Missing Blocks Added")})
     .catch(err=>{
-      console.log(`Error in ${i} Block`,err);
+      console.log(`Error in  Block`,err);
     })
 }
 
@@ -91,7 +91,7 @@ async function fillCache(){
 
     await redis.set("latestBlock",latestBlock.number);
 
-    for(let i = 0;i<1000;i++){
+    for(let i = 0;i<100;i++){
       blockPromises.push(provider.getBlock(latestBlockNumber-i))
     }
     const blocks = await Promise.all(blockPromises)

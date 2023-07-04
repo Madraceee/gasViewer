@@ -10,6 +10,17 @@ Second, run the development server:
 ```bash
 npm run dev
 ```
+
+To start NextJS
+```
+npm run start:nextjs
+```
+
+To start Server
+```
+npm run start:custom
+```
+
 Note Both Client and server will Start
 If server fails to start
 rerun the command

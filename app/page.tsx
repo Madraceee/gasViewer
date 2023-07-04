@@ -137,13 +137,13 @@ export default function Home() {
    <div>
     <div className="component">
       <header>
-        <span>Network Fee</span>            
-        <select name="duration" id="option" onChange={(e)=>handleOptionChange(e.target.value)} value={option}>
-          <option>Default</option>
-          <option>15Min</option>
-          <option>1Hr</option>
-          <option>1Day</option>
-        </select>
+        <span>Network Fee</span>
+        <div className="slider">
+          <span onClick={()=>handleOptionChange("Default")} className={option === "Default"? "active" : ""}>Dflt</span>  
+          <span onClick={()=>handleOptionChange("15Min")} className={option === "15Min"? "active" : ""}>15Min</span>
+          <span onClick={()=>handleOptionChange("1Hr")} className={option === "1Hr"? "active" : ""}>1Hr</span>
+          <span onClick={()=>handleOptionChange("1Day")} className={option === "1Day"? "active" : ""}>1D</span>
+        </div>            
       </header>
       {loading ? <Loading /> : isError? 
         (
